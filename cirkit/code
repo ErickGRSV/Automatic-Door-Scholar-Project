@@ -1,0 +1,240 @@
+//importando a biblioteca do teclado de membrana
+#include <Keypad.h>
+
+//importando a biblioteca dos servos
+#include <ESP32Servo.h>
+
+//variável para a senha
+const String senha = "54321";
+String senhaDigitada = "";
+
+//variável de tentativas de acesso
+int tentativas = 5;
+
+//Objeto do servo para manipulá-lo.
+Servo servo1;
+bool portaAutorizada = false;
+
+//Variável dos pinos dos leds
+int ledRed = 18;
+int ledYellow = 17;
+int ledGreen = 16;
+
+//Variável do pino do buzzer
+int buzzer = 3;
+
+//Variável dos pinos do sensor ultrassônico
+// const int trig = 11;
+// const int echo = 10;
+
+//variável da quantidade das colunas do teclado de membrana
+const byte LINHAS = 4;
+const byte COLUNAS = 4;
+
+//variável que possui o valor de cada tecla
+char teclas[LINHAS][COLUNAS] = {
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'*', '0', '#', 'D'}
+};
+
+//pinos de cada linha do teclado
+byte pinosLinhas[LINHAS] = {41, 40, 39, 38};
+
+//pinos de cada coluna do teclado
+byte pinosColunas[COLUNAS] = {45, 48, 47, 21};
+
+//Mapeando cada tecla do teclado
+Keypad keypad = Keypad(
+  makeKeymap(teclas), pinosLinhas, pinosColunas, LINHAS, COLUNAS);
+
+//Funções para facilitar a leitura do loop()
+//------------------------------------------------------------------
+
+ void verificarSenha() {
+
+//Condicional para verificar a senha digitada 
+
+  /*Se a senha digitada for igual a senha cadastrada,
+  o led verde acenderá, o servo motor 'abrirá', e, 
+  para confirmar que o sistema está funcionando, o 
+  buzzer emitirá um som agradável e, exibimos uma
+  mensagem de sucesso no monitor serial. Esperam-se
+  5 segundos para depois, fechar e desligar
+  o led, buzzer e fechar o servo motor.*/
+  
+//Variável de tentativas de digitação de senha
+
+  if (senhaDigitada == senha) {
+    portaAutorizada = true;
+    digitalWrite(ledGreen, HIGH);
+    servo1.write(180);
+    Serial.println("Senha correta!\nAbrindo porta...");
+    tone(buzzer, 1024);
+
+    delay(5000);
+    
+    servo1.write(90);
+    portaAutorizada = false;
+    digitalWrite(ledGreen, LOW);
+    noTone(buzzer);
+
+    /*Aqui reiniciamos a senha e mantemos a quantidade
+    de tentativas de acesso.*/
+    tentativas = 5;
+    senhaDigitada = "";
+
+  } 
+  
+  else {//o else será ativado caso a senha digitada esteja incorreta
+    
+    //a cada tentativa e nenhum sucesso, as tentativas diminuem gradativamente
+    tentativas--;
+    
+    /*Quando a senha digitada for incorreta, o led vermelho
+    acenderá, o servo mantém-se fechado, no serial, exibi-se
+    uma mensagem de erro e de tentativa, o buzzer emite um
+    som mais grave, mostra-se as tentativas restantes e a 
+    senha digitada pelo usuário é apagada automaticamente.
+    Espera-se 500 milissegundos para desligar tudo.
+    
+    Digitando a senha correta antes de exceder as tentativas,
+    a porta será liberada.*/
+
+    digitalWrite(ledRed, HIGH);
+    servo1.write(90);
+    Serial.println("Senha incorreta!\nTente novamente");
+    tone(buzzer, 800);
+
+    Serial.println("Tentativas restantes: ");
+    Serial.println(tentativas);
+
+    //limpa a senha a cada nova tentativa
+    senhaDigitada = "";
+
+    delay(500);
+
+    digitalWrite(ledRed, LOW);
+    noTone(buzzer);
+    } 
+
+    /*Caso o número de tentativas seja excedido, o acesso ao
+    usuário será bloqueado e o sistema fará a solicitação de
+    um técnico ou responsável que possa ajudar a pessoa.*/
+
+    if (tentativas == 0) {
+
+    Serial.println("Limite de tentativas excedidos\nAcesso bloqueado");
+    Serial.println("Solicite um técnico ou responsável");
+    digitalWrite(ledYellow, HIGH);
+    tone(buzzer, 250);
+
+    //Aguarda o técnico e ou/responsável antes de liberar novamente.
+    delay(800);
+
+    digitalWrite(ledYellow, LOW);
+    noTone(buzzer);
+
+    //reseta as tentativas após o bloqueio
+    tentativas = 5;
+
+    }
+
+  }
+
+
+  void verificarPorta(){
+
+    if (servo1.read() == 180 && portaAutorizada == false) {
+
+    Serial.println("A porta está aberta, feche imediatamente");
+    digitalWrite(ledYellow, HIGH);
+    tone(buzzer, 250);
+
+    }
+
+    else if (servo1.read() == 90) {
+
+    Serial.println("A porta está fechada");
+    digitalWrite(ledYellow, LOW);
+    digitalWrite(ledGreen, HIGH);
+    noTone(buzzer);
+
+    delay(500);
+
+    digitalWrite(ledGreen, LOW);
+
+    }
+
+  }
+
+//------------------------------------------------------------------
+
+
+
+//setup para configurar cada componente
+void setup() {
+
+  //iniciando o monitor serial  
+  Serial.begin(9600);
+  
+  //texto de apoio para teste das teclas
+  Serial.println("Teste do Keypad 4x4");
+  Serial.println("Pressione uma tecla...");
+
+  //configurando o pino do servo
+  servo1.attach(13);
+
+  //definindo a posição inicial do servo
+  servo1.write(90);
+
+  //configurando pinos dos leds
+  pinMode(ledRed, OUTPUT);
+  pinMode(ledYellow, OUTPUT);
+  pinMode(ledGreen, OUTPUT);
+
+  //configurando o pino do buzzer
+  pinMode(buzzer, OUTPUT);
+
+  //configurando os pinos do sensor ultrassônico HC-SR04
+  // pinMode(trig, OUTPUT);
+  // pinMode(echo, INPUT);
+
+}
+
+
+void loop() {
+
+  //pegando o valor de cada tecla do teclado  
+  char tecla = keypad.getKey();
+  verificarPorta();
+
+  //se a tecla for pressionada, mostra-se o valor da tecla correspondente
+  //colocamos esse teste para verificar se o valor de cada tecla está correto
+  if (tecla) {
+
+    if (tecla == '#') {
+
+    verificarSenha();
+
+    }
+
+    else if (tecla == '*') {
+
+    senhaDigitada = "";
+    Serial.println("Entrada limpa");
+
+    }
+
+    else {
+
+    senhaDigitada += tecla;
+    Serial.print("*");
+
+    }
+
+    Serial.print("Tecla pressionada: ");
+    Serial.println(tecla);
+  }
+}
