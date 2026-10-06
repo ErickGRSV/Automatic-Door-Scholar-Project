@@ -127,7 +127,7 @@ Keypad keypad = Keypad(
 
     Serial.println("Limite de tentativas excedidos\nAcesso bloqueado");
     Serial.println("Solicite um técnico ou responsável");
-    digitalWrite(ledYellow, HIGH);
+digitalWrite(ledYellow, HIGH);
     tone(buzzer, 250);
 
     //Aguarda o técnico e ou/responsável antes de liberar novamente.
@@ -155,16 +155,8 @@ Keypad keypad = Keypad(
     }
 
     else if (servo1.read() == 90) {
-
-    Serial.println("A porta está fechada");
-    digitalWrite(ledYellow, LOW);
-    digitalWrite(ledGreen, HIGH);
-    noTone(buzzer);
-
-    delay(500);
-
-    digitalWrite(ledGreen, LOW);
-
+      digitalWrite(ledYellow, LOW);
+      noTone(buzzer);
     }
 
   }
